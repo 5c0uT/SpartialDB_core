@@ -55,7 +55,7 @@
 # Инструкция по установке
 ```bash
 * Клонирование репозитория
-git clone https://github.com/ваш-пользователь/spatialdb.git
+https://github.com/5c0uT/SpartialDB_core.git
 cd spatialdb
 ```
 * Установка Python-зависимостей
