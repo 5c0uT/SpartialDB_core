@@ -59,7 +59,7 @@ _____
 Установка:
 ```
 # Клонирование репозитория
-git clone https://github.com/your-username/spatialdb.git
+https://github.com/5c0uT/SpartialDB_core.git
 cd spatialdb
 
 # Установка зависимостей
