@@ -1,0 +1,12 @@
+numpy
+pandas
+pyarrow
+fsspec
+laspy
+trimesh
+tqdm
+matplotlib
+proj
+pybind11
+jupyter
+geopandas
