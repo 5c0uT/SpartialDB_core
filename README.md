@@ -53,8 +53,8 @@
 - CMake 3.15+
 
 # Инструкция по установке
-```bash
 * Клонирование репозитория
+```bash
 https://github.com/5c0uT/SpartialDB_core.git
 cd spatialdb
 ```
