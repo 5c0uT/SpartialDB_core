@@ -1,0 +1,57 @@
+[run]
+# Конфигурация coverage.py
+
+# Исходники
+source = spatial_db
+
+# Параллельное выполнение
+parallel = True
+concurrency = multiprocessing
+
+# Ветвления
+branch = True
+
+# Igнорируемые пути
+omit =
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */site-packages/*
+    */distutils/*
+
+[report]
+# Пути для отчета
+
+exclude_lines =
+    # Не вычислять покрытие для:
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abc.abstractmethod
+    except ImportError:
+    except ModuleNotFoundError:
+
+# Пропуск файлов
+omit =
+    */tests/*
+    */test_*.py
+    setup.py
+
+precision = 2
+skip_covered = False
+skip_empty = True
+
+[html]
+# HTML отчет
+
+directory = htmlcov
+title = SpatialDB Coverage Report
+
+[xml]
+# XML отчет
+
+output = coverage.xml
