@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
 project(SpatialDB_Core LANGUAGES CXX C)
 
+if(POLICY CMP0144)
+    cmake_policy(SET CMP0144 NEW)
+endif()
+
 set(CMAKE_MESSAGE_LOG_LEVEL VERBOSE)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -64,6 +68,12 @@ set(LOCAL_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies" CACHE PATH "Depend
 set(PYTHON_ROOT "C:\\Python314" CACHE PATH "Python root")
 set(CONDA_ENV_PATH "C:\\ProgramData\\envs\\spatial_env" CACHE PATH "Conda environment")
 
+if(EXISTS "${PYTHON_ROOT}/python.exe")
+    set(Python_EXECUTABLE "${PYTHON_ROOT}/python.exe" CACHE FILEPATH "Python executable" FORCE)
+endif()
+set(Python_FIND_VIRTUALENV FIRST)
+set(PYBIND11_FINDPYTHON ON CACHE BOOL "Use modern FindPython mode for pybind11" FORCE)
+
 message(STATUS "")
 message(STATUS "Paths:")
 message(STATUS "  Dependencies: ${LOCAL_DEPS_DIR}")
@@ -77,6 +87,7 @@ file(APPEND "${LOG_FILE}" "  Python: ${PYTHON_ROOT}\n")
 file(APPEND "${LOG_FILE}" "  Conda: ${CONDA_ENV_PATH}\n\n")
 
 message(STATUS "Searching for pybind11...")
+find_package(pybind11 CONFIG QUIET)
 if(pybind11_FOUND)
     message(STATUS "pybind11: FOUND")
 else()
@@ -103,10 +114,24 @@ endif()
 
 message(STATUS "Searching for PROJ...")
 set(PROJ_DIR "${CONDA_ENV_PATH}/Library")
-find_package(PROJ PATHS "${PROJ_DIR}" CONFIG QUIET)
+set(PROJ_INCLUDE_DIR "${PROJ_DIR}/include")
+set(PROJ_LIBRARY "${PROJ_DIR}/lib/proj.lib")
+set(PROJ_DLL "${PROJ_DIR}/bin/proj_9.dll")
 
-if(PROJ_FOUND)
+if(EXISTS "${PROJ_INCLUDE_DIR}/proj.h" AND EXISTS "${PROJ_LIBRARY}" AND EXISTS "${PROJ_DLL}")
+    if(NOT TARGET PROJ::proj)
+        add_library(PROJ::proj SHARED IMPORTED)
+        set_target_properties(PROJ::proj PROPERTIES
+            IMPORTED_IMPLIB "${PROJ_LIBRARY}"
+            IMPORTED_LOCATION "${PROJ_DLL}"
+            INTERFACE_INCLUDE_DIRECTORIES "${PROJ_INCLUDE_DIR}"
+        )
+    endif()
+    set(PROJ_FOUND TRUE)
+    set(PROJ_LIBRARIES PROJ::proj)
     message(STATUS "PROJ: FOUND")
+    message(STATUS "PROJ include: ${PROJ_INCLUDE_DIR}")
+    message(STATUS "PROJ library: ${PROJ_LIBRARY}")
     set(USE_PROJ TRUE)
     file(APPEND "${LOG_FILE}" "PROJ: FOUND\n")
 else()
@@ -222,6 +247,14 @@ if(PHYSX_FOUND)
         ws2_32
         winmm
     )
+    if(USE_PROJ)
+        target_link_libraries(spatialdb_core PUBLIC PROJ::proj)
+    endif()
+    target_compile_definitions(spatialdb_core PUBLIC
+        USE_PHYSX=1
+        USE_PROJ=$<IF:$<BOOL:${USE_PROJ}>,1,0>
+        USE_CURL=$<IF:$<BOOL:${USE_CURL}>,1,0>
+    )
     
     message(STATUS "Library spatialdb_core: CONFIGURED")
 else()
@@ -243,6 +276,14 @@ else()
     )
     
     target_link_libraries(spatialdb_core PUBLIC ws2_32 winmm)
+    if(USE_PROJ)
+        target_link_libraries(spatialdb_core PUBLIC PROJ::proj)
+    endif()
+    target_compile_definitions(spatialdb_core PUBLIC
+        USE_PHYSX=0
+        USE_PROJ=$<IF:$<BOOL:${USE_PROJ}>,1,0>
+        USE_CURL=$<IF:$<BOOL:${USE_CURL}>,1,0>
+    )
 endif()
 
 message(STATUS "Creating Python module: spatialdb_core_pybind")
@@ -283,6 +324,7 @@ endif()
 
 set_target_properties(spatialdb_core_pybind PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     PREFIX ""
 )
 

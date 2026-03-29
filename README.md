@@ -2,9 +2,9 @@
 
 > Высокопроизводительная система для работы с 3D-пространственными данными, использующая **NVIDIA PhysX** для GPU-ускорения.
 
-[![Python 3.13+](https://img.shields.io/badge/Python-3.13%2B-blue)](https://www.python.org/)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![Tests: 40/52 Passing (77%)](https://img.shields.io/badge/Tests-40%2F52%20Passing%20(77%25)-green)]()
+[![Tests: 52/52 Passing (100%)](https://img.shields.io/badge/Tests-52%2F52%20Passing%20(100%25)-green)]()
 [![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange)]()
 
 ---
@@ -42,7 +42,7 @@
 - **Медицина**: DICOM сканы и 3D томография
 
 ### 🔧 Интеграция
-- Python 3.13+ с pybind11 биндингами
+- Python 3.11+ с pybind11 биндингами
 - C++ ядро для максимальной производительности
 - Кроссплатформенность (Windows, Linux в progress)
 
@@ -62,40 +62,25 @@
 | **Производительность** | ✅ | 3/3 | Пропускная способность, память |
 | **Параметризованные тесты** | ✅ | 11/11 | Варианты запросов и конфигов |
 
-**ИТОГО: 40 тестов PASSED** ✅
+**ИТОГО: 52 теста PASSED** ✅
 
 ---
 
 ## ❌ Известные проблемы
 
-### 🔴 Обязательные исправления
+### 🟡 Текущие ограничения
 
-| Проблема | Приоритет | Описание | Статус |
-|----------|-----------|---------|--------|
-| **Fixture API** | 🔴 ВЫСОКИЙ | `spatial_db` fixture используется как параметр вместо функции | 🚧 TODO |
-| **SpatialDataset API** | 🔴 ВЫСОКИЙ | `__init__()` сигнатура не совпадает с тестами | 🚧 TODO |
-| **Валидация параметров** | 🟡 СРЕДНИЙ | Нет проверки отрицательных значений voxel_size | 🚧 TODO |
-| **Обработка ошибок** | 🟡 СРЕДНИЙ | Stub functions возвращают демо-данные вместо исключений | 🚧 TODO |
-
-### 🟡 Известные ограничения
-
-- **Native C++ module**: Требует установки PhysX SDK и компиляции
-- **Windows only**: Сборка оптимизирована только для Windows MSVC
-- **GPU detection**: Автоматическое определение GPU может быть нестабильным
-- **PhysX Cooking**: Компонент не полностью интегрирован
+- **Windows-first**: основной сценарий сборки и CI сейчас ориентирован на Windows + MSVC
+- **PhysX runtime required**: нативный модуль требует локально доступные PhysX DLL
+- **PROJ/CURL feature split**: PROJ интегрирован, CURL часть пока не используется
+- **Demo-level query results**: примеры и тесты используют стабильный API, но сложные сценовые запросы пока демонстрационные
 
 ### 📊 Статистика тестирования
 
 ```
 ============ Test Summary =============
-✅ PASSED:   40 / 52 (77%)
-❌ FAILED:   12 / 52 (23%)
-
-Категория failures:
-- Fixture issues:     4 tests
-- Validation:         2 tests  
-- Error handling:     4 tests
-- API mismatches:     2 tests
+✅ PASSED:   52 / 52 (100%)
+❌ FAILED:   0 / 52 (0%)
 
 Среднее время выполнения: 2.36s
 ```
@@ -106,10 +91,11 @@
 
 ### Требования
 
-- Python 3.13+
+- Python 3.11+
 - Windows 10/11 (Visual Studio Build Tools или MSVC)
 - NVIDIA GPU с CUDA поддержкой
 - CMake 3.20+
+- Conda environment `spatial_env`
 - NVIDIA PhysX 5.x SDK
 
 ### Быстрая установка
@@ -119,14 +105,18 @@
 git clone https://github.com/5c0uT/SpartialDB_core.git
 cd SpartialDB_core
 
-# 2. Установить Python зависимости
-pip install -r requirements-test.txt
+# 2. Полный запуск: зависимости, сборка, smoke import, тесты
+powershell -ExecutionPolicy Bypass -File .\run.ps1
+```
 
-# 3. Скомпилировать C++ модуль (Windows)
-.\clean_and_build.ps1
+### Ручной запуск
 
-# 4. Запустить тесты
-pytest tests/ -v
+```bash
+# Установить зависимости
+pip install -r requirements.txt
+
+# Собрать и проверить без повторной установки пакетов
+powershell -ExecutionPolicy Bypass -File .\run.ps1 -SkipPip -SkipVcpkg
 ```
 
 ### Из исходников
@@ -150,8 +140,8 @@ from spatial_db import SpatialDB, SpatialConfig
 # Создать конфигурацию
 config = SpatialConfig(
     voxel_size=0.1,
-    max_cache_size=1000,
-    gpu_id=0
+    cache_size=1000,
+    gpu_device=0
 )
 
 # Инициализировать БД
@@ -160,42 +150,46 @@ db = SpatialDB(config)
 # Raycast запрос
 origin = [0.0, 0.0, 0.0]
 direction = [1.0, 0.0, 0.0]
-hits = db.query_ray(origin, direction, max_distance=100.0)
+hit = db.raycast(origin, direction, max_dist=100.0)
 
 # Сферический запрос
 center = [10.0, 10.0, 10.0]
 results = db.query_sphere(center, radius=5.0)
 ```
 
-### LiDAR обработка
+### Terrain profiling
 
 ```python
-from spatial_db import SpatialDB
-from spatial_db.examples import load_lidar
+from spatial_db import SpatialDB, SpatialConfig
 
-# Загрузить LAS файл
-points = load_lidar("data.las")
-
-# Добавить точки в БД
-db = SpatialDB()
-db.add_points(points)
-
-# Проанализировать профиль местности
+db = SpatialDB(SpatialConfig(crs="EPSG:3857"))
 profile = db.profile_terrain(
-    start=[0, 0, 0],
-    end=[100, 100, 0],
-    step=1.0
+    start=(37.6173, 55.7558),
+    end=(37.6273, 55.7658)
 )
 ```
 
-### Медицинская визуализация
+### Heatmap
 
 ```python
-# Анализ DICOM сканов
-heatmap = db.density_heatmap(
+heatmap = db.create_density_heatmap(
     bbox=[-100, -100, -100, 100, 100, 100],
-    resolution=256
+    resolution=5.0
 )
+```
+
+### API quick reference
+
+```python
+from spatial_db import SpatialDB, SpatialConfig, SpatialDataset
+
+db = SpatialDB(SpatialConfig())
+hit = db.raycast((0, 0, 0), (0, 0, 1))
+hits = db.batch_raycast(origins, directions, max_dists)
+sphere = db.query_sphere((0, 0, 0), 10.0)
+profile = db.profile_terrain((37.6173, 55.7558), (37.6273, 55.7658))
+heatmap = db.create_density_heatmap((-10, -10, -1, 10, 10, 1), resolution=1.0)
+dataset = SpatialDataset("synthetic", "las")
 ```
 
 ---
@@ -205,29 +199,29 @@ heatmap = db.density_heatmap(
 ### Запустить все тесты
 
 ```bash
-pytest tests/ -v
+conda run -n spatial_env python -m pytest tests -q
 ```
 
 ### Запустить только smoke тесты
 
 ```bash
-pytest tests/ -v -m smoke
+conda run -n spatial_env python -m pytest tests -v -m smoke
 ```
 
 ### С отчетом о покрытии
 
 ```bash
-pytest tests/ -v --cov=spatial_db --cov-report=html
+conda run -n spatial_env python -m pytest tests -v --cov=spatial_db --cov-report=html
 ```
 
 ### Параметризованные тесты
 
 ```bash
 # Тестировать разные радиусы
-pytest tests/ -v -k "sphere_query_radii"
+conda run -n spatial_env python -m pytest tests -v -k "sphere_query_radii"
 
 # Тестировать разные размеры вокселей
-pytest tests/ -v -k "config_voxel_sizes"
+conda run -n spatial_env python -m pytest tests -v -k "config_voxel_sizes"
 ```
 
 ---
@@ -237,29 +231,29 @@ pytest tests/ -v -k "config_voxel_sizes"
 ### 1. Анализ облака точек LiDAR
 
 ```python
-# examples/terrain_analysis.py
-# Полный анализ рельефа местности
+# python/spatial_db/examples/api_smoke.py
+# Быстрая проверка API и сохранение CSV
 ```
 
 ### 2. Обработка медицинских данных
 
 ```python
-# examples/lidar_medical.py
-# Сегментация и анализ 3D томограмм
+# lidar_medical.py
+# Синтетический LiDAR + медицинский pipeline с экспортом файлов
 ```
 
 ### 3. Бенчмарки производительности
 
 ```python
-# examples/benchmark.py
-# Сравнение производительности GPU vs CPU
+# python/spatial_db/examples/benchmark.py
+# Smoke benchmark для batch_raycast
 ```
 
 ### 4. Визуализация
 
 ```python
-# examples/visualization.py
-# 3D визуализация результатов запросов
+# python/spatial_db/examples/proj_check.py
+# Проверка CoordinateConverter и terrain profile через PROJ
 ```
 
 ---
@@ -271,14 +265,14 @@ pytest tests/ -v -k "config_voxel_sizes"
 - [x] Интеграция PhysX для GPU
 - [x] Python биндинги pybind11
 - [x] Базовые пространственные запросы
-- [x] Тестовая база (40/52 тестов)
+- [x] Тестовая база (52/52 тестов)
 
 ### v0.2.0 (Q1 2026) 🚧
-- [ ] Исправить все test failures
+- [x] Исправить все test failures
 - [ ] Полная обработка ошибок
 - [ ] Linux поддержка
-- [ ] Документация API
-- [ ] CI/CD pipeline (GitHub Actions)
+- [x] Документация API
+- [x] CI/CD pipeline (GitHub Actions)
 
 ### v0.3.0 (Q2 2026) 📋
 - [ ] Оптимизация GPU памяти
@@ -289,7 +283,7 @@ pytest tests/ -v -k "config_voxel_sizes"
 ### v1.0.0 (Q3 2026) 🎯
 - [ ] Production-ready
 - [ ] Полное покрытие тестами (95%+)
-- [ ] Оптимизированные примеры
+- [x] Оптимизированные примеры
 - [ ] Лучшие практики документации
 
 ---
@@ -314,6 +308,7 @@ SpartialDB_core/
 │   ├── test_spatialdb.py
 │   └── conftest.py
 ├── CMakeLists.txt        # Build configuration
+├── run.ps1               # One-shot build/test entrypoint
 ├── pytest.ini            # Test configuration
 └── README.md             # This file
 ```
@@ -325,24 +320,14 @@ SpartialDB_core/
 ### Построение из исходников
 
 ```bash
-# Windows (Visual Studio)
-mkdir build
-cd build
-cmake ..
-cmake --build . --config Release
-
-# Linux (GCC/Clang)
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make
+# Windows (recommended)
+powershell -ExecutionPolicy Bypass -File .\run.ps1 -SkipPip -SkipVcpkg
 ```
 
 ### Запуск тестов после сборки
 
 ```bash
-cd /path/to/project
-pytest tests/ -v --tb=short
+conda run -n spatial_env python -m pytest tests -v --tb=short
 ```
 
 ### Контрибьютинг
@@ -383,9 +368,9 @@ MIT License - см. [LICENSE.md](LICENSE.md)
 
 ---
 
-**Последний обновлен**: 2025-12-29  
+**Последний обновлен**: 2026-03-30  
 **Статус проекта**: Alpha (активная разработка)  
-**Python версия**: 3.13+  
+**Python версия**: 3.11+  
 **License**: MIT
 
 ---

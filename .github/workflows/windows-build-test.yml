@@ -1,0 +1,49 @@
+name: windows-build-test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: spatial_env
+          auto-activate-base: false
+          miniconda-version: "latest"
+          python-version: "3.11"
+
+      - name: Create environment
+        shell: pwsh
+        run: |
+          conda create -n spatial_env python=3.11 -y
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          conda run -n spatial_env python -m pip install -r requirements.txt
+          conda run -n spatial_env conda install -c conda-forge proj libcurl numpy scipy -y
+
+      - name: Bootstrap vcpkg and install PhysX
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .\dependencies)) { New-Item -ItemType Directory -Path .\dependencies | Out-Null }
+          if (-not (Test-Path .\dependencies\vcpkg)) {
+            git clone https://github.com/microsoft/vcpkg.git .\dependencies\vcpkg
+          }
+          if (-not (Test-Path .\dependencies\vcpkg\vcpkg.exe)) {
+            & .\dependencies\vcpkg\bootstrap-vcpkg.bat
+          }
+          & .\dependencies\vcpkg\vcpkg.exe install physx:x64-windows
+
+      - name: Build and test
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\run.ps1 -SkipPip -SkipVcpkg

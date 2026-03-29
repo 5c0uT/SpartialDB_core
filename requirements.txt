@@ -1,5 +1,5 @@
 # Зависимости для тестирования SpatialDB_Core
-# Использование: pip install -r requirements-test.txt
+# Использование: pip install -r requirements.txt
 
 # Основные зависимости (из основного requirements.txt)
 numpy>=1.21.0
@@ -8,6 +8,11 @@ pandas>=1.3.0
 laspy>=2.1.0
 trimesh>=3.9.0
 fsspec>=2021.11.0
+tqdm>=4.62.0
+matplotlib>=3.5.0
+pydicom>=2.4.0
+nibabel>=5.0.0
+scikit-image>=0.22.0
 
 # Фреймворки тестирования
 pytest>=7.0.0

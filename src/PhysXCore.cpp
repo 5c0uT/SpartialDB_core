@@ -62,7 +62,12 @@ PhysXCore& PhysXCore::instance() {
 }
 
 void PhysXCore::init(int cudaDevice) {
+    (void)cudaDevice;
     Impl& p = *mImpl;
+
+    if (p.mPhysics && p.mFoundation) {
+        return;
+    }
 
     p.mFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, p.mAllocator, p.mErrorCallback);
     if (!p.mFoundation) {

@@ -3,9 +3,13 @@
 #include <string>
 #include <memory>
 
-// Forward declarations для PROJ (если не доступны)
+#ifdef USE_PROJ
+#include <proj.h>
+#else
+// Forward declarations для stub-конфигурации
 struct PJ_CONTEXT;
 struct PJ;
+#endif
 
 class CoordinateConverter {
 public:

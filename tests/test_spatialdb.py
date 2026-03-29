@@ -358,9 +358,9 @@ class TestPerformance:
         directions /= np.linalg.norm(directions, axis=1, keepdims=True)
         max_dists = np.full(num_rays, 1000.0)
         
-        start_time = time.time()
+        start_time = time.perf_counter()
         hits = spatial_db.batch_raycast(origins, directions, max_dists)
-        elapsed = time.time() - start_time
+        elapsed = time.perf_counter() - start_time
         
         throughput = num_rays / elapsed
         logger.info(f"Raycast throughput: {throughput:.0f} rays/sec")
@@ -374,10 +374,10 @@ class TestPerformance:
         num_queries = 100
         centers = np.random.uniform(-50, 50, size=(num_queries, 3))
         
-        start_time = time.time()
+        start_time = time.perf_counter()
         for center in centers:
             spatial_db.query_sphere(tuple(center), 10.0)
-        elapsed = time.time() - start_time
+        elapsed = time.perf_counter() - start_time
         
         throughput = num_queries / elapsed
         logger.info(f"Sphere query throughput: {throughput:.0f} queries/sec")

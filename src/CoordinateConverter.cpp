@@ -1,8 +1,6 @@
 #include "CoordinateConverter.hpp"
 
-#ifdef USE_PROJ
-#include <proj.h>
-#else
+#ifndef USE_PROJ
 // Stub implementation when PROJ is not available
 struct PJ_CONTEXT {};
 struct PJ {};
@@ -10,6 +8,7 @@ struct PJ {};
 
 #include <stdexcept>
 #include <string>
+#include <cstdlib>
 
 CoordinateConverter::CoordinateConverter(const std::string& sourceCRS, const std::string& targetCRS)
     : mContext(nullptr), mConversion(nullptr) {
@@ -17,6 +16,18 @@ CoordinateConverter::CoordinateConverter(const std::string& sourceCRS, const std
     mContext = proj_context_create();
     if (!mContext) {
         throw std::runtime_error("Failed to create PROJ context");
+    }
+
+    if (const char* projData = std::getenv("PROJ_DATA")) {
+        const char* searchPaths[] = { projData };
+        proj_context_set_search_paths(mContext, 1, searchPaths);
+        std::string dbPath = std::string(projData) + "/proj.db";
+        proj_context_set_database_path(mContext, dbPath.c_str(), nullptr, nullptr);
+    } else if (const char* projLib = std::getenv("PROJ_LIB")) {
+        const char* searchPaths[] = { projLib };
+        proj_context_set_search_paths(mContext, 1, searchPaths);
+        std::string dbPath = std::string(projLib) + "/proj.db";
+        proj_context_set_database_path(mContext, dbPath.c_str(), nullptr, nullptr);
     }
 
     mConversion = proj_create_crs_to_crs(mContext, sourceCRS.c_str(), targetCRS.c_str(), nullptr);

@@ -7,10 +7,10 @@
 class BVHManager;
 
 struct RayHit {
-    std::array<float, 3> position;
-    std::array<float, 3> normal;
-    float distance;
-    uint32_t objectID;
+    std::array<float, 3> position {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> normal {0.0f, 0.0f, 0.0f};
+    float distance = -1.0f;
+    uint32_t objectID = 0;
 };
 
 class SpatialDB {

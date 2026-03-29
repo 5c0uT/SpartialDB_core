@@ -52,6 +52,22 @@ PYBIND11_MODULE(spatialdb_core_pybind, m) {
                    std::to_string(arr[2]) + "]";
         });
 
+#ifdef USE_PHYSX
+#if USE_PHYSX == 1
+    py::class_<PxVec3>(m, "PxVec3")
+        .def(py::init<float, float, float>(),
+            py::arg("x") = 0.0f, py::arg("y") = 0.0f, py::arg("z") = 0.0f)
+        .def_readwrite("x", &PxVec3::x)
+        .def_readwrite("y", &PxVec3::y)
+        .def_readwrite("z", &PxVec3::z)
+        .def("__repr__", [](const PxVec3& vec) {
+            return "<PxVec3 x=" + std::to_string(vec.x) +
+                   " y=" + std::to_string(vec.y) +
+                   " z=" + std::to_string(vec.z) + ">";
+        });
+#endif
+#endif
+
     py::class_<RayHit>(m, "RayHit")
         .def(py::init<>())
         .def_readwrite("position", &RayHit::position)
@@ -76,13 +92,42 @@ PYBIND11_MODULE(spatialdb_core_pybind, m) {
             "Build BVH acceleration structure")
         .def("clear_scene", &SpatialDB::clearScene,
             "Clear all loaded geometry")
-        .def("query_ray", &SpatialDB::queryRay,
+        .def("query_ray", [](SpatialDB& self, const PxVec3& origin, const PxVec3& direction, float max_distance) {
+            const float origin_values[3] = {origin.x, origin.y, origin.z};
+            const float direction_values[3] = {direction.x, direction.y, direction.z};
+            return self.queryRay(origin_values, direction_values, max_distance);
+        },
             py::arg("origin"), py::arg("direction"), py::arg("max_distance") = 1e6f,
             "Cast single ray and get intersection")
-        .def("batch_query_ray", &SpatialDB::batchQueryRay,
+        .def("batch_query_ray", [](SpatialDB& self,
+                                   const std::vector<PxVec3>& origins,
+                                   const std::vector<PxVec3>& directions,
+                                   const std::vector<float>& max_distances) {
+            std::vector<float> flat_origins;
+            std::vector<float> flat_directions;
+            flat_origins.reserve(origins.size() * 3);
+            flat_directions.reserve(directions.size() * 3);
+
+            for (const auto& origin : origins) {
+                flat_origins.push_back(origin.x);
+                flat_origins.push_back(origin.y);
+                flat_origins.push_back(origin.z);
+            }
+
+            for (const auto& direction : directions) {
+                flat_directions.push_back(direction.x);
+                flat_directions.push_back(direction.y);
+                flat_directions.push_back(direction.z);
+            }
+
+            return self.batchQueryRay(flat_origins, flat_directions, max_distances);
+        },
             py::arg("origins"), py::arg("directions"), py::arg("max_distances"),
             "Cast multiple rays in batch")
-        .def("query_sphere", &SpatialDB::querySphere,
+        .def("query_sphere", [](SpatialDB& self, const PxVec3& center, float radius) {
+            const float center_values[3] = {center.x, center.y, center.z};
+            return self.querySphere(center_values, radius);
+        },
             py::arg("center"), py::arg("radius"),
             "Query sphere overlap with geometry");
 
@@ -140,6 +185,11 @@ PYBIND11_MODULE(spatialdb_core_pybind, m) {
         .def("step_simulation", &PhysXCore::stepSimulation,
             py::arg("dt"),
             "Step physics simulation by dt seconds");
+
+    m.def("init_physx", [](int device) {
+        PhysXCore::instance().init(device);
+        return true;
+    }, py::arg("device") = 0, "Initialize the PhysX runtime");
 
 #endif
 #endif

@@ -159,8 +159,8 @@ def run_terrain_analysis():
     logger.info("Creating terrain profile...")
     try:
         profile = db.profile_terrain(
-            start=(500, 500),
-            end=(800, 800)
+            start=(37.6173, 55.7558),
+            end=(37.6273, 55.7658)
         )
 
         if profile is not None:
