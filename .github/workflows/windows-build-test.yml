@@ -11,10 +11,6 @@ jobs:
   build-and-test:
     runs-on: windows-latest
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,43 +24,45 @@ jobs:
           python-version: "3.11"
 
       - name: Create environment
+        shell: pwsh
         run: |
           conda create -n spatial_env python=3.11 -y
 
       - name: Install Python dependencies
+        shell: pwsh
         run: |
           conda run -n spatial_env python -m pip install -r requirements.txt
           conda run -n spatial_env conda install -c conda-forge proj libcurl numpy scipy -y
 
       - name: Bootstrap vcpkg and install PhysX
+        shell: pwsh
         run: |
-          mkdir -p dependencies
-          if [ ! -d dependencies/vcpkg ]; then
-            git clone https://github.com/microsoft/vcpkg.git dependencies/vcpkg
-          fi
-          if [ ! -f dependencies/vcpkg/vcpkg.exe ]; then
-            cmd //c "dependencies\\vcpkg\\bootstrap-vcpkg.bat"
-          fi
-          ./dependencies/vcpkg/vcpkg.exe install physx:x64-windows
+          if (-not (Test-Path .\dependencies)) { New-Item -ItemType Directory -Path .\dependencies | Out-Null }
+          if (-not (Test-Path .\dependencies\vcpkg)) {
+            git clone https://github.com/microsoft/vcpkg.git .\dependencies\vcpkg
+          }
+          if (-not (Test-Path .\dependencies\vcpkg\vcpkg.exe)) {
+            & .\dependencies\vcpkg\bootstrap-vcpkg.bat
+          }
+          & .\dependencies\vcpkg\vcpkg.exe install physx:x64-windows
 
       - name: Build and test
+        shell: bash
         run: |
           CONDA_ROOT=$(cygpath "$CONDA")
           ENV_PYTHON="$CONDA_ROOT/envs/spatial_env/python.exe"
-          TOOLCHAIN="$CONDA_ROOT/../../dependencies/vcpkg/scripts/buildsystems/vcpkg.cmake"
-          BUILD_DIR="build"
 
           echo "CondaRoot: $CONDA_ROOT"
           echo "Python: $ENV_PYTHON"
 
-          cmake -S . -B "$BUILD_DIR" -G "Visual Studio 17 2022" -A x64 \
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 \
             -DCMAKE_TOOLCHAIN_FILE="dependencies/vcpkg/scripts/buildsystems/vcpkg.cmake" \
             -DPython_EXECUTABLE="$ENV_PYTHON" \
             -DPython_ROOT_DIR="$CONDA_ROOT/envs/spatial_env" \
             -DPYTHON_ROOT="$CONDA_ROOT/envs/spatial_env" \
             -DCONDA_ENV_PATH="$CONDA_ROOT/envs/spatial_env"
 
-          cmake --build "$BUILD_DIR" --config Release --parallel 16
+          cmake --build build --config Release --parallel 16
 
           export PATH="dependencies/vcpkg/installed/x64-windows/bin:$CONDA_ROOT/envs/spatial_env:$CONDA_ROOT/envs/spatial_env/Library/bin:$CONDA_ROOT/envs/spatial_env/Scripts:$PATH"
 
