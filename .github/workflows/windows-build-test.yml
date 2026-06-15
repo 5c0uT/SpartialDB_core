@@ -79,9 +79,9 @@ jobs:
           if (-not $cmakeExe) { throw "cmake not found in PATH" }
           Write-Host "cmake: $($cmakeExe.Source)"
 
-          # Configure with Ninja + Clang (more reliable than VS generator)
+          # Configure with Ninja + MSVC (not Clang — vcpkg toolchain needs MSVC)
           Write-Host "=== cmake configure ==="
-          cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DPython_EXECUTABLE="$envPython" -DPython_ROOT_DIR="$(Join-Path $condaRoot 'envs\spatial_env')" -DPYTHON_ROOT="$(Join-Path $condaRoot 'envs\spatial_env')" -DCONDA_ENV_PATH="$(Join-Path $condaRoot 'envs\spatial_env')"
+          cmake -S . -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DPython_EXECUTABLE="$envPython" -DPython_ROOT_DIR="$(Join-Path $condaRoot 'envs\spatial_env')" -DPYTHON_ROOT="$(Join-Path $condaRoot 'envs\spatial_env')" -DCONDA_ENV_PATH="$(Join-Path $condaRoot 'envs\spatial_env')"
           if ($LASTEXITCODE -ne 0) {
             if (Test-Path "build\CMakeFiles\CMakeError.log") { Get-Content "build\CMakeFiles\CMakeError.log" -Tail 20 | ForEach-Object { Write-Host $_ } }
             throw "cmake configure failed"
