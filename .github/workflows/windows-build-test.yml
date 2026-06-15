@@ -67,21 +67,26 @@ jobs:
           }
           if (-not $condaRoot) { throw "conda not found! CONDA=$env:CONDA CONDA_PREFIX=$env:CONDA_PREFIX" }
           Write-Host "CondaRoot: $condaRoot"
-
-          # Configure
-          $envPython = Join-Path $condaRoot "envs\spatial_env\python.exe"
-          $toolchain = ".\dependencies\vcpkg\scripts\buildsystems\vcpkg.cmake"
-
           Write-Host "Python: $envPython (exists: $(Test-Path $envPython))"
           Write-Host "Toolchain: $toolchain (exists: $(Test-Path $toolchain))"
 
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DPython_EXECUTABLE="$envPython" -DPython_ROOT_DIR="$(Join-Path $condaRoot 'envs\spatial_env')" -DPYTHON_ROOT="$(Join-Path $condaRoot 'envs\spatial_env')" -DCONDA_ENV_PATH="$(Join-Path $condaRoot 'envs\spatial_env')" 2>&1
+          # Try cmake with explicit generator first, fallback to auto-detect
+          Write-Host "=== cmake configure ==="
+          $cmakeOutput = cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DPython_EXECUTABLE="$envPython" -DPython_ROOT_DIR="$(Join-Path $condaRoot 'envs\spatial_env')" -DPYTHON_ROOT="$(Join-Path $condaRoot 'envs\spatial_env')" -DCONDA_ENV_PATH="$(Join-Path $condaRoot 'envs\spatial_env')" 2>&1
+          $cmakeOutput | ForEach-Object { Write-Host $_ }
+          Write-Host "cmake exit: $LASTEXITCODE"
+
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "CMakeOutput.log:"
-            if (Test-Path "build\CMakeFiles\CMakeOutput.log") { Get-Content "build\CMakeFiles\CMakeOutput.log" -Tail 30 }
-            Write-Host "CMakeError.log:"
-            if (Test-Path "build\CMakeFiles\CMakeError.log") { Get-Content "build\CMakeFiles\CMakeError.log" -Tail 30 }
-            throw "cmake configure failed"
+            Write-Host ""
+            Write-Host "=== Trying without explicit generator ==="
+            cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DPython_EXECUTABLE="$envPython" -DPython_ROOT_DIR="$(Join-Path $condaRoot 'envs\spatial_env')" 2>&1 | ForEach-Object { Write-Host $_ }
+            Write-Host "cmake exit: $LASTEXITCODE"
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host ""
+              Write-Host "=== CMakeError.log ==="
+              if (Test-Path "build\CMakeFiles\CMakeError.log") { Get-Content "build\CMakeFiles\CMakeError.log" -Tail 30 | ForEach-Object { Write-Host $_ } }
+              throw "cmake configure failed"
+            }
           }
 
           # Build
