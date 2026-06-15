@@ -19,8 +19,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: spatial_env
-          auto-activate: false
-          conda-remove-defaults: true
+          auto-activate-base: false
           miniconda-version: "latest"
           python-version: "3.11"
 
