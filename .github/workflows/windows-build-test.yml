@@ -51,21 +51,32 @@ jobs:
         id: detect-conda
         shell: pwsh
         run: |
+          Write-Host "CONDA=$env:CONDA"
+          Write-Host "CONDA_PREFIX=$env:CONDA_PREFIX"
+          Write-Host "PATH entries with conda:"
+          $env:PATH -split ';' | Where-Object { $_ -match 'conda|Miniconda|anaconda' } | ForEach-Object { Write-Host "  $_" }
+
           $condaRoot = ""
-          if (Get-Command conda -ErrorAction SilentlyContinue) {
-            $condaExe = (Get-Command conda).Source
-            $condaRoot = Split-Path (Split-Path $condaExe)
-            Write-Host "Found conda via PATH: $condaRoot"
+          if ($env:CONDA -and (Test-Path $env:CONDA)) {
+            $p = $env:CONDA
+            if (Test-Path $p -PathType Leaf) { $p = Split-Path (Split-Path $p) }
+            $condaRoot = $p
+            Write-Host "Found via CONDA: $condaRoot"
           } elseif ($env:CONDA_PREFIX) {
             $condaRoot = Split-Path $env:CONDA_PREFIX
-            Write-Host "Found conda via CONDA_PREFIX: $condaRoot"
+            Write-Host "Found via CONDA_PREFIX: $condaRoot"
+          } elseif (Get-Command conda -ErrorAction SilentlyContinue) {
+            $condaRoot = Split-Path (Split-Path (Get-Command conda).Source)
+            Write-Host "Found via PATH: $condaRoot"
           } else {
-            Write-Host "ERROR: conda not found!"
-            Write-Host "CONDA=$env:CONDA"
-            Write-Host "CONDA_PREFIX=$env:CONDA_PREFIX"
-            Write-Host "PATH=$env:PATH"
-            exit 1
+            # Search common locations
+            foreach ($p in @("$env:USERPROFILE\miniconda3", "$env:USERPROFILE\anaconda3", "C:\Miniconda", "C:\Miniconda3", "C:\ProgramData\Miniconda3")) {
+              if (Test-Path "$p\Scripts\conda.exe") { $condaRoot = $p; Write-Host "Found via search: $condaRoot"; break }
+            }
           }
+
+          if (-not $condaRoot) { throw "conda not found!" }
+          Write-Host "CONDA_ROOT=$condaRoot"
           echo "CONDA_ROOT=$condaRoot" >> $env:GITHUB_OUTPUT
 
       - name: Configure and build
