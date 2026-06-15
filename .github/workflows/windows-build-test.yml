@@ -66,25 +66,30 @@ jobs:
             }
           }
           if (-not $condaRoot) { throw "conda not found! CONDA=$env:CONDA CONDA_PREFIX=$env:CONDA_PREFIX" }
+
+          $envPython = Join-Path $condaRoot "envs\spatial_env\python.exe"
+          $toolchain = ".\dependencies\vcpkg\scripts\buildsystems\vcpkg.cmake"
+
           Write-Host "CondaRoot: $condaRoot"
           Write-Host "Python: $envPython (exists: $(Test-Path $envPython))"
           Write-Host "Toolchain: $toolchain (exists: $(Test-Path $toolchain))"
 
-          # Check cmake availability
-          Write-Host ""
-          Write-Host "=== cmake check ==="
-          $cmakePath = Get-Command cmake -ErrorAction SilentlyContinue
-          if ($cmakePath) {
-            Write-Host "cmake found at: $($cmakePath.Source)"
-            & cmake --version
-          } else {
-            Write-Host "cmake NOT found in PATH!"
-            Write-Host "PATH: $env:PATH"
-            throw "cmake not found"
+          # Check cmake
+          $cmakeExe = Get-Command cmake -ErrorAction SilentlyContinue
+          if (-not $cmakeExe) { throw "cmake not found in PATH" }
+          Write-Host "cmake: $($cmakeExe.Source)"
+
+          # Configure
+          Write-Host "=== cmake configure ==="
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DPython_EXECUTABLE="$envPython" -DPython_ROOT_DIR="$(Join-Path $condaRoot 'envs\spatial_env')" -DPYTHON_ROOT="$(Join-Path $condaRoot 'envs\spatial_env')" -DCONDA_ENV_PATH="$(Join-Path $condaRoot 'envs\spatial_env')"
+          if ($LASTEXITCODE -ne 0) {
+            if (Test-Path "build\CMakeFiles\CMakeError.log") { Get-Content "build\CMakeFiles\CMakeError.log" -Tail 20 | ForEach-Object { Write-Host $_ } }
+            throw "cmake configure failed"
           }
 
           # Build
-          cmake --build build --config Release --parallel 16 2>&1
+          Write-Host "=== cmake build ==="
+          cmake --build build --config Release --parallel 16
           if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
 
       - name: Smoke test
