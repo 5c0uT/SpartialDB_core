@@ -2,7 +2,7 @@
 
 param(
     [string]$CondaEnv = "spatial_env",
-    [string]$CondaRoot = "C:\ProgramData\Miniconda3",
+    [string]$CondaRoot = "",
     [switch]$SkipPip,
     [switch]$SkipVcpkg,
     [switch]$SkipTests,
@@ -10,6 +10,18 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not $CondaRoot) {
+    if ($env:CONDA -and (Test-Path $env:CONDA)) {
+        $CondaRoot = $env:CONDA
+    } elseif ($env:CONDA_PREFIX -and (Test-Path $env:CONDA_PREFIX)) {
+        $CondaRoot = Split-Path $env:CONDA_PREFIX -Parent
+    } elseif (Get-Command conda -ErrorAction SilentlyContinue) {
+        $CondaRoot = Split-Path (Split-Path (Get-Command conda).Source)
+    } else {
+        $CondaRoot = "C:\ProgramData\Miniconda3"
+    }
+}
 
 function Write-Step {
     param([string]$Message)

@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
 jobs:
   build-and-test:
     runs-on: windows-latest
@@ -16,7 +19,8 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: spatial_env
-          auto-activate-base: false
+          auto-activate: false
+          conda-remove-defaults: true
           miniconda-version: "latest"
           python-version: "3.11"
 

@@ -10,12 +10,24 @@ Fully automated build with all dependency management
 param(
     [switch]$SkipDependencies,
     [switch]$SkipBuild,
-    [string]$CondaPath = "C:\ProgramData\Miniconda3",
+    [string]$CondaPath = "",
     [switch]$Verbose
 )
 
 $ErrorActionPreference = "Continue"
 $VerbosePreference = if ($Verbose) { "Continue" } else { "SilentlyContinue" }
+
+if (-not $CondaPath) {
+    if ($env:CONDA -and (Test-Path $env:CONDA)) {
+        $CondaPath = $env:CONDA
+    } elseif ($env:CONDA_PREFIX -and (Test-Path $env:CONDA_PREFIX)) {
+        $CondaPath = Split-Path $env:CONDA_PREFIX -Parent
+    } elseif (Get-Command conda -ErrorAction SilentlyContinue) {
+        $CondaPath = Split-Path (Split-Path (Get-Command conda).Source)
+    } else {
+        $CondaPath = "C:\ProgramData\Miniconda3"
+    }
+}
 
 # Setup
 $logFile = Join-Path (Get-Location) "build.log"
