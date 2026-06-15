@@ -13,7 +13,12 @@ $ErrorActionPreference = "Stop"
 
 if (-not $CondaRoot) {
     if ($env:CONDA -and (Test-Path $env:CONDA)) {
-        $CondaRoot = $env:CONDA
+        $condaPath = $env:CONDA
+        if (Test-Path $condaPath -PathType Leaf) {
+            $CondaRoot = Split-Path (Split-Path $condaPath)
+        } else {
+            $CondaRoot = $condaPath
+        }
     } elseif ($env:CONDA_PREFIX -and (Test-Path $env:CONDA_PREFIX)) {
         $CondaRoot = Split-Path $env:CONDA_PREFIX -Parent
     } elseif (Get-Command conda -ErrorAction SilentlyContinue) {
