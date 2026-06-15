@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spatial_db"
+version = "0.3.0"
+description = "GPU-accelerated spatial database with NVIDIA PhysX"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "SpatialDB Team"},
+]
+keywords = ["gpu", "spatial", "database", "physx", "3d", "point-cloud", "raycast", "lidar"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Database",
+]
+dependencies = [
+    "numpy>=1.20.0",
+    "pandas>=1.3.0",
+    "fsspec>=2022.1.0",
+    "tqdm>=4.62.0",
+    "matplotlib>=3.5.0",
+    "laspy>=2.0.0",
+    "trimesh>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21",
+]
+all = [
+    "scipy>=1.7.0",
+    "shapely>=1.8.0",
+    "pyproj>=3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/5c0uT/SpartialDB_core"
+Repository = "https://github.com/5c0uT/SpartialDB_core"
+Issues = "https://github.com/5c0uT/SpartialDB_core/issues"
+
+[project.scripts]
+spatialdb-benchmark = "spatial_db.examples.benchmark:run_benchmark"
+
+[tool.setuptools.packages.find]
+include = ["spatial_db*"]
+
+[tool.setuptools.package-data]
+spatial_db = ["lib/*.pyd", "lib/*.dll", "lib/*.so"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "performance: performance tests",
+    "smoke: smoke tests",
+]
+
+[tool.coverage.run]
+source = ["spatial_db"]
+omit = ["tests/*", "python/spatial_db/examples/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+]

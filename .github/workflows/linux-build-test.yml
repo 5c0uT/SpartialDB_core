@@ -1,0 +1,49 @@
+name: linux-build-test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: spatial_env
+          auto-activate-base: false
+          miniconda-version: "latest"
+          python-version: "3.11"
+
+      - name: Create environment
+        shell: bash -l {0}
+        run: |
+          conda create -n spatial_env python=3.11 -y
+
+      - name: Install Python dependencies
+        shell: bash -l {0}
+        run: |
+          conda run -n spatial_env python -m pip install -r requirements.txt
+          conda run -n spatial_env conda install -c conda-forge proj libcurl numpy scipy -y
+
+      - name: Bootstrap vcpkg and install PhysX
+        shell: bash -l {0}
+        run: |
+          mkdir -p dependencies
+          if [ ! -d dependencies/vcpkg ]; then
+            git clone https://github.com/microsoft/vcpkg.git dependencies/vcpkg
+          fi
+          if [ ! -f dependencies/vcpkg/vcpkg ]; then
+            ./dependencies/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          fi
+          ./dependencies/vcpkg/vcpkg install physx:x64-linux
+
+      - name: Build and test
+        shell: bash -l {0}
+        run: |
+          bash build.sh --skip-pip --skip-vcpkg

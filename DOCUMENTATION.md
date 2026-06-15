@@ -161,12 +161,15 @@ class RayHit:
     objectID: int                         # ID объекта
 ```
 # Обработка ошибок
-```
+```python
+from spatial_db import SpatialDBError, SpatialDBInitError, SpatialDBQueryError
+
 try:
     hits = db.batch_raycast(origins, directions, max_dists)
-except SpatialDBError as e:
+except SpatialDBQueryError as e:
     logger.error(f"Raycast failed: {e}")
-    # Fallback to CPU implementation
+except SpatialDBInitError as e:
+    logger.error(f"Engine not initialized: {e}")
 ```
 # Пакетный raycast
 ```

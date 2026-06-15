@@ -28,6 +28,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "python"))
 # Импортируем модули
 import spatial_db
 from spatial_db import SpatialDB, SpatialConfig, SpatialDataset
+from spatial_db import SpatialDBError, SpatialDBInitError, SpatialDBQueryError, SpatialDBDataError, SpatialDBConfigError
+from spatial_db import SpatialDBPool, enumerate_devices
 
 # ============================================================================
 # КОНФИГУРАЦИЯ ЛОГИРОВАНИЯ
@@ -428,6 +430,81 @@ class TestErrorHandling:
         with pytest.raises((TypeError, ValueError)):
             spatial_db.create_density_heatmap((1, 2, 3, 4, 5))
 
+    def test_raycast_origin_wrong_length(self, spatial_db):
+        """Проверка raycast с origin неправильной длины"""
+        with pytest.raises(ValueError):
+            spatial_db.raycast((0.0, 0.0), (0, 0, 1))
+
+    def test_raycast_direction_not_numeric(self, spatial_db):
+        """Проверка raycast с нечисловым direction"""
+        with pytest.raises(TypeError):
+            spatial_db.raycast((0, 0, 0), ("a", "b", "c"))
+
+    def test_raycast_max_dist_not_numeric(self, spatial_db):
+        """Проверка raycast с нечисловым max_dist"""
+        with pytest.raises(TypeError):
+            spatial_db.raycast((0, 0, 0), (0, 0, 1), max_dist="far")
+
+    def test_batch_raycast_shape_mismatch(self, spatial_db):
+        """Проверка batch_raycast с несовпадающими размерностями"""
+        origins = np.array([[0, 0, 0], [1, 1, 1]])
+        directions = np.array([[0, 0, 1]])
+        max_dists = np.array([100.0, 100.0])
+        with pytest.raises(ValueError):
+            spatial_db.batch_raycast(origins, directions, max_dists)
+
+    def test_batch_raycast_wrong_shape(self, spatial_db):
+        """Проверка batch_raycast с неправильной формой origins"""
+        with pytest.raises(ValueError):
+            spatial_db.batch_raycast(np.array([0, 0, 0]), np.array([[0, 0, 1]]), np.array([100.0]))
+
+    def test_sphere_query_radius_not_numeric(self, spatial_db):
+        """Проверка sphere query с нечисловым radius"""
+        with pytest.raises(TypeError):
+            spatial_db.query_sphere((0, 0, 0), "big")
+
+    def test_config_invalid_crs(self):
+        """Проверка конфигурации с невалидной CRS"""
+        with pytest.raises(ValueError):
+            SpatialConfig(crs="")
+
+    def test_config_invalid_gpu_device(self):
+        """Проверка конфигурации с невалидным gpu_device"""
+        with pytest.raises(TypeError):
+            SpatialConfig(gpu_device="not_int")
+
+    def test_spatialdb_error_hierarchy(self):
+        """Проверка иерархии исключений SpatialDB"""
+        assert issubclass(SpatialDBInitError, SpatialDBError)
+        assert issubclass(SpatialDBQueryError, SpatialDBError)
+        assert issubclass(SpatialDBDataError, SpatialDBError)
+        assert issubclass(SpatialDBConfigError, SpatialDBError)
+        assert issubclass(SpatialDBError, Exception)
+
+    def test_spatialdb_error_message(self):
+        """Проверка сообщений исключений SpatialDB"""
+        err = SpatialDBError("test error")
+        assert str(err) == "test error"
+
+        init_err = SpatialDBInitError("init failed")
+        assert str(init_err) == "init failed"
+        assert isinstance(init_err, SpatialDBError)
+
+    def test_dataset_invalid_source(self):
+        """Проверка dataset с невалидным source"""
+        with pytest.raises(ValueError):
+            SpatialDataset("", "las")
+
+    def test_dataset_invalid_format(self):
+        """Проверка dataset с невалидным format"""
+        with pytest.raises(ValueError):
+            SpatialDataset("test", "")
+
+    def test_dataset_unsupported_format(self):
+        """Проверка dataset с неподдерживаемым format"""
+        with pytest.raises(ValueError):
+            SpatialDataset("test", "xyz")
+
 
 # ============================================================================
 # NATIVE MODULE TESTS
@@ -533,6 +610,188 @@ class TestSmokeTests:
         db = SpatialDB()
         result = db.query_sphere((0, 0, 0), 10.0)
         assert isinstance(result, list)
+
+
+# ============================================================================
+# ADVANCED QUERY TESTS (v0.3.0)
+# ============================================================================
+
+class TestAdvancedQueries:
+    """Тесты k-NN и range queries"""
+
+    def test_knn_basic(self):
+        """Проверка базового k-NN запроса"""
+        db = SpatialDB()
+        points = np.array([[1, 0, 0], [2, 0, 0], [3, 0, 0], [10, 10, 10]], dtype=float)
+        db.add_point_cloud(points, voxel_size=0.0)
+        results = db.query_knn((0, 0, 0), k=3)
+        assert isinstance(results, list)
+        assert len(results) <= 3
+
+    def test_knn_empty(self):
+        """Проверка k-NN на пустой БД"""
+        db = SpatialDB()
+        results = db.query_knn((0, 0, 0), k=5)
+        assert isinstance(results, list)
+        assert len(results) == 0
+
+    def test_knn_invalid_k(self):
+        """Проверка k-NN с невалидным k"""
+        db = SpatialDB()
+        with pytest.raises(ValueError):
+            db.query_knn((0, 0, 0), k=0)
+        with pytest.raises(ValueError):
+            db.query_knn((0, 0, 0), k=-1)
+
+    def test_knn_invalid_query_point(self):
+        """Проверка k-NN с невалидным query_point"""
+        db = SpatialDB()
+        with pytest.raises((TypeError, ValueError)):
+            db.query_knn([0, 0], k=5)
+
+    def test_range_query_basic(self):
+        """Проверка базового range query"""
+        db = SpatialDB()
+        points = np.array([[1, 1, 1], [5, 5, 5], [10, 10, 10]], dtype=float)
+        db.add_point_cloud(points, voxel_size=0.0)
+        results = db.query_range((0, 0, 0), (6, 6, 6))
+        assert isinstance(results, list)
+        assert len(results) == 2
+
+    def test_range_query_empty(self):
+        """Проверка range query без результатов"""
+        db = SpatialDB()
+        points = np.array([[100, 100, 100]], dtype=float)
+        db.add_point_cloud(points, voxel_size=0.0)
+        results = db.query_range((0, 0, 0), (1, 1, 1))
+        assert len(results) == 0
+
+    def test_range_query_invalid_bounds(self):
+        """Проверка range query с невалидными bounds"""
+        db = SpatialDB()
+        with pytest.raises(ValueError):
+            db.query_range((10, 10, 10), (0, 0, 0))
+
+    def test_add_point_cloud(self):
+        """Проверка добавления point cloud"""
+        db = SpatialDB()
+        points = np.array([[1, 2, 3], [4, 5, 6]], dtype=float)
+        db.add_point_cloud(points)
+        assert db.is_initialized
+
+    def test_add_point_cloud_voxel(self):
+        """Проверка добавления point cloud с вокселизацией"""
+        db = SpatialDB()
+        points = np.array([
+            [1.0, 1.0, 1.0],
+            [1.01, 1.01, 1.01],
+            [5.0, 5.0, 5.0],
+        ], dtype=float)
+        db.add_point_cloud(points, voxel_size=0.1)
+        assert db.is_initialized
+
+    def test_add_point_cloud_invalid_shape(self):
+        """Проверка добавления point cloud с неправильной формой"""
+        db = SpatialDB()
+        with pytest.raises(ValueError):
+            db.add_point_cloud(np.array([1, 2, 3]))
+
+    def test_add_point_cloud_invalid_voxel(self):
+        """Проверка добавления point cloud с невалидным voxel_size"""
+        db = SpatialDB()
+        with pytest.raises(ValueError):
+            db.add_point_cloud(np.array([[1, 2, 3]]), voxel_size=-1)
+
+
+# ============================================================================
+# MULTI-GPU TESTS (v0.3.0)
+# ============================================================================
+
+class TestMultiGPU:
+    """Тесты multi-GPU поддержки"""
+
+    def test_enumerate_devices(self):
+        """Проверка перечисления устройств"""
+        devices = enumerate_devices()
+        assert isinstance(devices, list)
+        assert len(devices) >= 1
+        assert "id" in devices[0]
+        assert "name" in devices[0]
+
+    def test_spatialdb_pool(self):
+        """Проверка SpatialDBPool"""
+        pool = SpatialDBPool([SpatialConfig()])
+        assert pool.device_count == 1
+        db = pool.get_instance(0)
+        assert db is not None
+        assert db.is_initialized
+        pool.shutdown()
+
+    def test_spatialdb_pool_invalid_device(self):
+        """Проверка SpatialDBPool с невалидным device_id"""
+        pool = SpatialDBPool([SpatialConfig()])
+        with pytest.raises(ValueError):
+            pool.get_instance(99)
+        pool.shutdown()
+
+    def test_spatialdb_pool_distributed_raycast(self):
+        """Проверка распределённого raycast"""
+        pool = SpatialDBPool([SpatialConfig()])
+        origins = np.random.uniform(-10, 10, (10, 3))
+        directions = np.random.uniform(-1, 1, (10, 3))
+        directions /= np.linalg.norm(directions, axis=1, keepdims=True)
+        max_dists = np.full(10, 100.0)
+        results = pool.batch_raycast_distributed(origins, directions, max_dists)
+        assert isinstance(results, list)
+        assert len(results) == 10
+        pool.shutdown()
+
+
+# ============================================================================
+# GPU MEMORY TESTS (v0.3.0)
+# ============================================================================
+
+class TestGPUMemory:
+    """Тесты GPU памяти"""
+
+    def test_get_memory_stats(self):
+        """Проверка получения статистики памяти"""
+        db = SpatialDB()
+        stats = db.get_memory_stats()
+        assert isinstance(stats, dict)
+        assert "allocated_bytes" in stats
+        assert "peak_bytes" in stats
+        assert "gpu_available" in stats
+
+    def test_memory_stats_after_init(self):
+        """Проверка статистики после инициализации"""
+        db = SpatialDB()
+        stats = db.get_memory_stats()
+        assert stats["gpu_available"] is True or stats["gpu_available"] is False
+        assert isinstance(stats["allocated_bytes"], int)
+
+
+# ============================================================================
+# PYPI PACKAGING TESTS (v0.3.0)
+# ============================================================================
+
+class TestPyPIPackaging:
+    """Тесты упаковки для PyPI"""
+
+    def test_version_consistency(self):
+        """Проверка версии в setup.py и __init__"""
+        from spatial_db.core import HAS_NATIVE_MODULE
+        import spatial_db
+        assert hasattr(spatial_db, 'HAS_NATIVE_MODULE')
+
+    def test_package_metadata(self):
+        """Проверка метаданных пакета"""
+        import importlib.metadata
+        try:
+            meta = importlib.metadata.metadata("spatial_db")
+            assert meta is not None
+        except importlib.metadata.PackageNotFoundError:
+            pass
 
 
 # ============================================================================

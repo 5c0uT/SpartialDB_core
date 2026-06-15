@@ -4,7 +4,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![Tests: 52/52 Passing (100%)](https://img.shields.io/badge/Tests-52%2F52%20Passing%20(100%25)-green)]()
+[![Tests: 80/80 Passing (100%)](https://img.shields.io/badge/Tests-80%2F80%20Passing%20(100%25)-green)]()
 [![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange)]()
 
 ---
@@ -57,12 +57,19 @@
 | **Инициализация SpatialDB** | ✅ | 5/5 | Конфигурация, потоки |
 | **Raycast операции** | ✅ | 5/5 | Одиночные/групповые запросы |
 | **Сферические запросы** | ✅ | 4/4 | Разные радиусы, граничные случаи |
+| **k-NN запросы** | ✅ | 4/4 | Поиск ближайших соседей |
+| **Range запросы** | ✅ | 3/3 | AABB поиск точек |
+| **Point Cloud загрузка** | ✅ | 4/4 | Вокселизация, валидация |
+| **GPU память** | ✅ | 2/2 | Статистика, мониторинг |
+| **Multi-GPU** | ✅ | 4/4 | Пул устройств, распределение |
 | **Анализ рельефа** | ✅ | 4/4 | Профили, тепловые карты |
 | **Интеграционные тесты** | ✅ | 3/3 | Сценарии работы |
 | **Производительность** | ✅ | 3/3 | Пропускная способность, память |
 | **Параметризованные тесты** | ✅ | 11/11 | Варианты запросов и конфигов |
+| **Обработка ошибок** | ✅ | 19/19 | Иерархия исключений, валидация |
+| **Упаковка PyPI** | ✅ | 2/2 | pyproject.toml, версия |
 
-**ИТОГО: 52 теста PASSED** ✅
+**ИТОГО: 80 тестов PASSED** ✅
 
 ---
 
@@ -70,7 +77,7 @@
 
 ### 🟡 Текущие ограничения
 
-- **Windows-first**: основной сценарий сборки и CI сейчас ориентирован на Windows + MSVC
+- **Windows + Linux**: сборка и CI поддерживаются на обеих платформах
 - **PhysX runtime required**: нативный модуль требует локально доступные PhysX DLL
 - **PROJ/CURL feature split**: PROJ интегрирован, CURL часть пока не используется
 - **Demo-level query results**: примеры и тесты используют стабильный API, но сложные сценовые запросы пока демонстрационные
@@ -79,8 +86,8 @@
 
 ```
 ============ Test Summary =============
-✅ PASSED:   52 / 52 (100%)
-❌ FAILED:   0 / 52 (0%)
+✅ PASSED:   80 / 80 (100%)
+❌ FAILED:   0 / 80 (0%)
 
 Среднее время выполнения: 2.36s
 ```
@@ -92,7 +99,7 @@
 ### Требования
 
 - Python 3.11+
-- Windows 10/11 (Visual Studio Build Tools или MSVC)
+- Windows 10/11 или Ubuntu 20.04+ (Visual Studio Build Tools/MSVC или GCC/Clang)
 - NVIDIA GPU с CUDA поддержкой
 - CMake 3.20+
 - Conda environment `spatial_env`
@@ -116,7 +123,10 @@ powershell -ExecutionPolicy Bypass -File .\run.ps1
 pip install -r requirements.txt
 
 # Собрать и проверить без повторной установки пакетов
+# Windows:
 powershell -ExecutionPolicy Bypass -File .\run.ps1 -SkipPip -SkipVcpkg
+# Linux:
+bash build.sh --skip-pip --skip-vcpkg
 ```
 
 ### Из исходников
@@ -181,15 +191,23 @@ heatmap = db.create_density_heatmap(
 ### API quick reference
 
 ```python
-from spatial_db import SpatialDB, SpatialConfig, SpatialDataset
+from spatial_db import SpatialDB, SpatialConfig, SpatialDataset, SpatialDBPool, enumerate_devices
 
 db = SpatialDB(SpatialConfig())
 hit = db.raycast((0, 0, 0), (0, 0, 1))
 hits = db.batch_raycast(origins, directions, max_dists)
 sphere = db.query_sphere((0, 0, 0), 10.0)
+neighbors = db.query_knn((0, 0, 0), k=10)
+range_hits = db.query_range((-10, -10, -10), (10, 10, 10))
+db.add_point_cloud(points, voxel_size=0.5)
+stats = db.get_memory_stats()
 profile = db.profile_terrain((37.6173, 55.7558), (37.6273, 55.7658))
 heatmap = db.create_density_heatmap((-10, -10, -1, 10, 10, 1), resolution=1.0)
 dataset = SpatialDataset("synthetic", "las")
+
+devices = enumerate_devices()
+pool = SpatialDBPool([SpatialConfig(gpu_device=i) for i in range(len(devices))])
+results = pool.batch_raycast_distributed(origins, directions, max_dists)
 ```
 
 ---
@@ -269,16 +287,16 @@ conda run -n spatial_env python -m pytest tests -v -k "config_voxel_sizes"
 
 ### v0.2.0 (Q1 2026) 🚧
 - [x] Исправить все test failures
-- [ ] Полная обработка ошибок
-- [ ] Linux поддержка
+- [x] Полная обработка ошибок
+- [x] Linux поддержка
 - [x] Документация API
 - [x] CI/CD pipeline (GitHub Actions)
 
-### v0.3.0 (Q2 2026) 📋
-- [ ] Оптимизация GPU памяти
-- [ ] Поддержка Multi-GPU
-- [ ] Advanced queries (k-NN, range queries)
-- [ ] PyPI пакет
+### v0.3.0 (Q2 2026) ✅
+- [x] Оптимизация GPU памяти
+- [x] Поддержка Multi-GPU
+- [x] Advanced queries (k-NN, range queries)
+- [x] PyPI пакет
 
 ### v1.0.0 (Q3 2026) 🎯
 - [ ] Production-ready
@@ -320,8 +338,11 @@ SpartialDB_core/
 ### Построение из исходников
 
 ```bash
-# Windows (recommended)
-powershell -ExecutionPolicy Bypass -File .\run.ps1 -SkipPip -SkipVcpkg
+# 2. Полный запуск: зависимости, сборка, smoke import, тесты
+# Windows:
+powershell -ExecutionPolicy Bypass -File .\run.ps1
+# Linux:
+bash build.sh
 ```
 
 ### Запуск тестов после сборки

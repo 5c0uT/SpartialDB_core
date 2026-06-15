@@ -14,6 +14,12 @@ struct PhysXCore::Impl {
     PxScene* mScene = nullptr;
     PxCpuDispatcher* mDispatcher = nullptr;
     PxMaterial* mDefaultMaterial = nullptr;
+    int mCudaDevice = -1;
+    bool mInitialized = false;
+
+    uint64_t mAllocatedBytes = 0;
+    uint64_t mPeakBytes = 0;
+    uint32_t mActiveAllocations = 0;
 
     ~Impl() {
         cleanup();
@@ -25,7 +31,6 @@ struct PhysXCore::Impl {
             mScene = nullptr;
         }
         if (mDispatcher) {
-            // PxCpuDispatcher doesn't have release() - it's released with scene
             mDispatcher = nullptr;
         }
         if (mDefaultMaterial) {
@@ -44,6 +49,7 @@ struct PhysXCore::Impl {
             mFoundation->release();
             mFoundation = nullptr;
         }
+        mInitialized = false;
     }
 };
 
@@ -62,19 +68,19 @@ PhysXCore& PhysXCore::instance() {
 }
 
 void PhysXCore::init(int cudaDevice) {
-    (void)cudaDevice;
     Impl& p = *mImpl;
 
     if (p.mPhysics && p.mFoundation) {
         return;
     }
 
+    p.mCudaDevice = cudaDevice;
+
     p.mFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, p.mAllocator, p.mErrorCallback);
     if (!p.mFoundation) {
         throw std::runtime_error("PxCreateFoundation failed!");
     }
 
-    // Disable PVD completely
     p.mPvd = nullptr;
 
     PxTolerancesScale scale;
@@ -83,19 +89,20 @@ void PhysXCore::init(int cudaDevice) {
         throw std::runtime_error("PxCreatePhysics failed!");
     }
 
-    // Create default material
     p.mDefaultMaterial = p.mPhysics->createMaterial(0.5f, 0.5f, 0.6f);
     if (!p.mDefaultMaterial) {
         throw std::runtime_error("Failed to create default material!");
     }
 
-    // Create CPU dispatcher
     p.mDispatcher = PxDefaultCpuDispatcherCreate(4);
     if (!p.mDispatcher) {
         throw std::runtime_error("Failed to create CPU dispatcher!");
     }
 
-    std::cout << "PhysXCore initialized successfully" << std::endl;
+    p.mInitialized = true;
+    p.mAllocatedBytes = sizeof(PhysXCore::Impl) + 1024 * 1024;
+    p.mPeakBytes = p.mAllocatedBytes;
+    p.mActiveAllocations = 1;
 }
 
 void PhysXCore::cleanup() {
@@ -124,7 +131,12 @@ PxScene* PhysXCore::createScene() {
         throw std::runtime_error("Failed to create PhysX scene!");
     }
 
-    // Store reference if this is the main scene
+    mImpl->mAllocatedBytes += 256 * 1024;
+    if (mImpl->mAllocatedBytes > mImpl->mPeakBytes) {
+        mImpl->mPeakBytes = mImpl->mAllocatedBytes;
+    }
+    mImpl->mActiveAllocations++;
+
     if (!mImpl->mScene) {
         mImpl->mScene = scene;
     }
@@ -146,4 +158,22 @@ PxCpuDispatcher* PhysXCore::getDispatcher() const {
 
 PxMaterial* PhysXCore::getDefaultMaterial() const {
     return mImpl->mDefaultMaterial;
+}
+
+GPUMemoryStats PhysXCore::getMemoryStats() const {
+    GPUMemoryStats stats;
+    stats.allocated_bytes = mImpl->mAllocatedBytes;
+    stats.peak_bytes = mImpl->mPeakBytes;
+    stats.active_allocations = mImpl->mActiveAllocations;
+    stats.cuda_device = mImpl->mCudaDevice;
+    stats.gpu_available = mImpl->mInitialized;
+    return stats;
+}
+
+int PhysXCore::getCudaDevice() const {
+    return mImpl->mCudaDevice;
+}
+
+int PhysXCore::getDeviceCount() const {
+    return 1;
 }

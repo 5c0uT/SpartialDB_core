@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 
 setup(
     name='spatial_db',
-    version='0.1.0',
+    version='0.3.0',
     packages=find_packages(),
     package_data={
-        'spatial_db': ['lib/*.pyd', 'lib/*.dll'],  # Включаем нативные библиотеки
+        'spatial_db': ['lib/*.pyd', 'lib/*.dll', 'lib/*.so'],
     },
     install_requires=[
         'numpy>=1.20.0',

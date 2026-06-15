@@ -2,8 +2,8 @@
 #include <vector>
 #include <array>
 #include <string>
+#include <cstdint>
 
-// Предварительное объявление
 class BVHManager;
 
 struct RayHit {
@@ -11,6 +11,17 @@ struct RayHit {
     std::array<float, 3> normal {0.0f, 0.0f, 0.0f};
     float distance = -1.0f;
     uint32_t objectID = 0;
+};
+
+struct NeighborResult {
+    uint32_t objectID = 0;
+    float distance = 0.0f;
+    std::array<float, 3> position {0.0f, 0.0f, 0.0f};
+};
+
+struct RangeQueryResult {
+    uint32_t objectID = 0;
+    std::array<float, 3> position {0.0f, 0.0f, 0.0f};
 };
 
 class SpatialDB {
@@ -29,9 +40,25 @@ public:
     );
     std::vector<uint32_t> querySphere(const float center[3], float radius);
 
+    std::vector<NeighborResult> queryKNN(
+        const float queryPoint[3],
+        uint32_t k,
+        float maxRadius = 1e6f
+    );
+    std::vector<RangeQueryResult> queryRange(
+        const float minBounds[3],
+        const float maxBounds[3]
+    );
+
     void buildBVH();
     void clearScene();
 
+    void addPointCloud(
+        const std::vector<float>& points,
+        float voxelSize = 0.1f
+    );
+
 private:
     BVHManager* mBVHManager;
+    std::vector<std::array<float, 3>> mPoints;
 };

@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <cmath>
 #include <algorithm>
+#include <stdexcept>
 
 struct VoxelKey {
     int x, y, z;
@@ -26,6 +27,12 @@ void Voxelizer::voxelize(
     std::vector<uint32_t>& outIndices,
     float voxelSize
 ) {
+    if (voxelSize <= 0.0f) {
+        throw std::invalid_argument("voxelize: voxelSize must be > 0");
+    }
+    if (points.empty()) {
+        return;
+    }
     std::unordered_map<VoxelKey, physx::PxVec3> voxelCenters;
     std::unordered_map<VoxelKey, int> voxelCounts;
 

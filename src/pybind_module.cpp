@@ -80,6 +80,28 @@ PYBIND11_MODULE(spatialdb_core_pybind, m) {
         });
 
     // ========================================================================
+    // ADVANCED QUERY TYPES
+    // ========================================================================
+
+    py::class_<NeighborResult>(m, "NeighborResult")
+        .def(py::init<>())
+        .def_readwrite("objectID", &NeighborResult::objectID)
+        .def_readwrite("distance", &NeighborResult::distance)
+        .def_readwrite("position", &NeighborResult::position)
+        .def("__repr__", [](const NeighborResult& nr) {
+            return "<NeighborResult id=" + std::to_string(nr.objectID) +
+                   " dist=" + std::to_string(nr.distance) + ">";
+        });
+
+    py::class_<RangeQueryResult>(m, "RangeQueryResult")
+        .def(py::init<>())
+        .def_readwrite("objectID", &RangeQueryResult::objectID)
+        .def_readwrite("position", &RangeQueryResult::position)
+        .def("__repr__", [](const RangeQueryResult& rqr) {
+            return "<RangeQueryResult id=" + std::to_string(rqr.objectID) + ">";
+        });
+
+    // ========================================================================
     // SPATIALDB CLASS
     // ========================================================================
 
@@ -129,7 +151,32 @@ PYBIND11_MODULE(spatialdb_core_pybind, m) {
             return self.querySphere(center_values, radius);
         },
             py::arg("center"), py::arg("radius"),
-            "Query sphere overlap with geometry");
+            "Query sphere overlap with geometry")
+        .def("query_knn", [](SpatialDB& self, const PxVec3& queryPoint, uint32_t k, float maxRadius) {
+            const float point[3] = {queryPoint.x, queryPoint.y, queryPoint.z};
+            return self.queryKNN(point, k, maxRadius);
+        },
+            py::arg("query_point"), py::arg("k"), py::arg("max_radius") = 1e6f,
+            "Find k nearest neighbors to a point")
+        .def("query_range", [](SpatialDB& self, const PxVec3& minBounds, const PxVec3& maxBounds) {
+            const float min_b[3] = {minBounds.x, minBounds.y, minBounds.z};
+            const float max_b[3] = {maxBounds.x, maxBounds.y, maxBounds.z};
+            return self.queryRange(min_b, max_b);
+        },
+            py::arg("min_bounds"), py::arg("max_bounds"),
+            "Query all points within an axis-aligned bounding box")
+        .def("add_point_cloud", [](SpatialDB& self, const std::vector<PxVec3>& points, float voxelSize) {
+            std::vector<float> flat;
+            flat.reserve(points.size() * 3);
+            for (const auto& p : points) {
+                flat.push_back(p.x);
+                flat.push_back(p.y);
+                flat.push_back(p.z);
+            }
+            self.addPointCloud(flat, voxelSize);
+        },
+            py::arg("points"), py::arg("voxel_size") = 0.1f,
+            "Add a point cloud with optional voxel downsampling");
 
     // ========================================================================
     // COORDINATE CONVERTER (Conditional)
@@ -169,6 +216,18 @@ PYBIND11_MODULE(spatialdb_core_pybind, m) {
 #ifdef USE_PHYSX
 #if USE_PHYSX == 1
 
+    py::class_<GPUMemoryStats>(m, "GPUMemoryStats")
+        .def_readwrite("allocated_bytes", &GPUMemoryStats::allocated_bytes)
+        .def_readwrite("peak_bytes", &GPUMemoryStats::peak_bytes)
+        .def_readwrite("active_allocations", &GPUMemoryStats::active_allocations)
+        .def_readwrite("cuda_device", &GPUMemoryStats::cuda_device)
+        .def_readwrite("gpu_available", &GPUMemoryStats::gpu_available)
+        .def("__repr__", [](const GPUMemoryStats& s) {
+            return "<GPUMemoryStats alloc=" + std::to_string(s.allocated_bytes) +
+                   " peak=" + std::to_string(s.peak_bytes) +
+                   " device=" + std::to_string(s.cuda_device) + ">";
+        });
+
     py::class_<PhysXCore>(m, "PhysXCore")
         .def_static("instance", &PhysXCore::instance, 
             py::return_value_policy::reference,
@@ -184,7 +243,13 @@ PYBIND11_MODULE(spatialdb_core_pybind, m) {
             "Create a new physics scene")
         .def("step_simulation", &PhysXCore::stepSimulation,
             py::arg("dt"),
-            "Step physics simulation by dt seconds");
+            "Step physics simulation by dt seconds")
+        .def("get_memory_stats", &PhysXCore::getMemoryStats,
+            "Get GPU memory statistics")
+        .def("get_cuda_device", &PhysXCore::getCudaDevice,
+            "Get current CUDA device index")
+        .def("get_device_count", &PhysXCore::getDeviceCount,
+            "Get number of available CUDA devices");
 
     m.def("init_physx", [](int device) {
         PhysXCore::instance().init(device);
@@ -198,7 +263,7 @@ PYBIND11_MODULE(spatialdb_core_pybind, m) {
     // MODULE METADATA
     // ========================================================================
 
-    m.attr("__version__") = "3.0.0";
+    m.attr("__version__") = "0.3.0";
     m.attr("__author__") = "SpatialDB Team";
     m.attr("__license__") = "MIT";
     
