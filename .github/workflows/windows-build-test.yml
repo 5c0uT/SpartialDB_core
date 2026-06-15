@@ -52,10 +52,7 @@ jobs:
         run: |
           Write-Host "CONDA=$env:CONDA"
           Write-Host "CONDA_PREFIX=$env:CONDA_PREFIX"
-          Write-Host "PATH=$env:PATH"
           & .\run.ps1 -SkipPip -SkipVcpkg
-        env:
-          CONDA: ${{ steps.setup-miniconda.outputs.conda }}
 
       - name: Smoke test
         shell: pwsh
