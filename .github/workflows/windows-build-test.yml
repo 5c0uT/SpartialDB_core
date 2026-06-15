@@ -52,6 +52,13 @@ jobs:
         run: |
           Write-Host "CONDA=$env:CONDA"
           Write-Host "CONDA_PREFIX=$env:CONDA_PREFIX"
+          Write-Host "Conda command:"
+          Get-Command conda -ErrorAction SilentlyContinue | Format-List
+          Write-Host "Conda paths check:"
+          if (Test-Path "$env:USERPROFILE\miniconda3") { Write-Host "  USERPROFILE\miniconda3: EXISTS" }
+          if (Test-Path "$env:USERPROFILE\anaconda3") { Write-Host "  USERPROFILE\anaconda3: EXISTS" }
+          if (Test-Path "C:\Miniconda") { Write-Host "  C:\Miniconda: EXISTS" }
+          if (Test-Path "C:\Miniconda3") { Write-Host "  C:\Miniconda3: EXISTS" }
           & .\run.ps1 -SkipPip -SkipVcpkg
 
       - name: Smoke test
