@@ -70,13 +70,6 @@ jobs:
           $physxBin = ".\dependencies\vcpkg\installed\x64-windows\bin"
           $env:PATH = "$physxBin;$condaRoot\envs\spatial_env;$condaRoot\envs\spatial_env\Library\bin;$condaRoot\envs\spatial_env\Scripts;$env:PATH"
 
-          & "$envPython" -c @"
-import pathlib, sys
-sys.path.insert(0, str(pathlib.Path.cwd() / 'python'))
-import spatial_db
-print('HAS_NATIVE_MODULE =', spatial_db.HAS_NATIVE_MODULE)
-print('native =', getattr(spatial_db.native, '__name__', type(spatial_db.native).__name__))
-print('init_physx =', spatial_db.native.init_physx(0))
-"@
+          & "$envPython" -c "import pathlib,sys; sys.path.insert(0,str(pathlib.Path.cwd()/'python')); import spatial_db; print('HAS_NATIVE_MODULE =',spatial_db.HAS_NATIVE_MODULE); print('native =',getattr(spatial_db.native,'__name__',type(spatial_db.native).__name__)); print('init_physx =',spatial_db.native.init_physx(0))"
 
           conda run -n spatial_env python -m pytest tests -q
