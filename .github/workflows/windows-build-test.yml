@@ -79,9 +79,21 @@ jobs:
           if (-not $cmakeExe) { throw "cmake not found in PATH" }
           Write-Host "cmake: $($cmakeExe.Source)"
 
-          # Configure with Ninja + MSVC (explicitly set MSVC compiler)
+          # Setup MSVC environment and configure with Ninja
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vcvarsall = Join-Path $vsPath "VC\Auxiliary\Build\vcvarsall.bat"
+          if (-not (Test-Path $vcvarsall)) { throw "vcvarsall.bat not found: $vcvarsall" }
+          Write-Host "MSVC: $vcvarsall"
+          & cmd /c "`"$vcvarsall`" amd64 >nul 2>&1 && set" | ForEach-Object {
+            if ($_ -match "^([^=]+)=(.*)$") {
+              [System.Environment]::SetEnvironmentVariable($matches[1], $matches[2], "Process")
+            }
+          }
+          Write-Host "cl: $(Get-Command cl -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)"
+
+          # Configure with Ninja + MSVC
           Write-Host "=== cmake configure ==="
-          cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DPython_EXECUTABLE="$envPython" -DPython_ROOT_DIR="$(Join-Path $condaRoot 'envs\spatial_env')" -DPYTHON_ROOT="$(Join-Path $condaRoot 'envs\spatial_env')" -DCONDA_ENV_PATH="$(Join-Path $condaRoot 'envs\spatial_env')"
+          cmake -S . -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DPython_EXECUTABLE="$envPython" -DPython_ROOT_DIR="$(Join-Path $condaRoot 'envs\spatial_env')" -DPYTHON_ROOT="$(Join-Path $condaRoot 'envs\spatial_env')" -DCONDA_ENV_PATH="$(Join-Path $condaRoot 'envs\spatial_env')"
           if ($LASTEXITCODE -ne 0) {
             if (Test-Path "build\CMakeFiles\CMakeError.log") { Get-Content "build\CMakeFiles\CMakeError.log" -Tail 20 | ForEach-Object { Write-Host $_ } }
             throw "cmake configure failed"
