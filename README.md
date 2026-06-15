@@ -4,7 +4,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![Tests: 80/80 Passing (100%)](https://img.shields.io/badge/Tests-80%2F80%20Passing%20(100%25)-green)]()
+[![Tests: 84/84 Passing (100%)](https://img.shields.io/badge/Tests-84%2F84%20Passing%20(100%25)-green)]()
 [![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange)]()
 
 ---
@@ -69,7 +69,7 @@
 | **Обработка ошибок** | ✅ | 19/19 | Иерархия исключений, валидация |
 | **Упаковка PyPI** | ✅ | 2/2 | pyproject.toml, версия |
 
-**ИТОГО: 80 тестов PASSED** ✅
+**ИТОГО: 84 тестов PASSED** ✅
 
 ---
 
@@ -86,8 +86,8 @@
 
 ```
 ============ Test Summary =============
-✅ PASSED:   80 / 80 (100%)
-❌ FAILED:   0 / 80 (0%)
+✅ PASSED:   84 / 84 (100%)
+❌ FAILED:   0 / 84 (0%)
 
 Среднее время выполнения: 2.36s
 ```
@@ -297,6 +297,48 @@ conda run -n spatial_env python -m pytest tests -v -k "config_voxel_sizes"
 - [x] Поддержка Multi-GPU
 - [x] Advanced queries (k-NN, range queries)
 - [x] PyPI пакет
+
+### v0.4.0 (Q2 2026) 🔧 — CI/CD и исправления тестов
+- [x] Валидация форматов в `SpatialDataset`: корректный `ValueError` для неподдерживаемых форматов
+- [x] Исправить координаты в terrain-тестах: lat/lon > 85° недопустимы для EPSG:3857
+- [ ] Исправить бейдж тестов: 80/80 → 84/84
+- [ ] Исправить счётчик в roadmap: v0.2.0 указывает 52/52, актуальное число 80+
+- [ ] CI/CD: миграция actions на Node.js 24 (actions/checkout@v4 → v5, setup-miniconda@v3 → v4)
+- [ ] CI/CD: замена `auto-activate-base` на `auto-activate` в setup-miniconda
+- [ ] CI/CD: добавить `conda-remove-defaults: true` для устранения предупреждения о канале defaults
+
+### v0.5.0 (Q2 2026) 🧩 — Type hints и интеграция
+- [ ] Добавить type stubs (`.pyi`) для pybind11 модуля
+- [ ] Добавить `py.typed` маркер для PEP 561 совместимости
+- [ ] Вся Python API должна проходить `mypy --strict` без ошибок
+- [ ] Добавить `__all__` экспорт во все модули пакета
+
+### v0.6.0 (Q2 2026) 🌍 — CURL и форматы данных
+- [ ] Подключить CURL интеграцию (CMake находит `CURL: NOT FOUND`) либо убрать из зависимостей
+- [ ] Реальная загрузка LAS/LAZ файлов вместо синтетических данных в `SpatialDataset`
+- [ ] Поддержка OBJ/PLY STL импорта через trimesh
+- [ ] Экспорт результатов запросов в файлы (JSON, CSV, LAS)
+
+### v0.7.0 (Q3 2026) ⚡ — Реальный terrain profiling
+- [ ] Заменить `_demo_profile` на реальный terrain sampling через PROJ + heightmap
+- [ ] Интеграция с публичными DEM источниками (SRTM, ASTER, Copernicus)
+- [ ] Поддержка пользовательских heightmap файлов (GeoTIFF, ASCII Grid)
+- [ ] Интерполяция высот между точками профиля
+
+### v0.8.0 (Q3 2026) 🖥️ — Кроссплатформенность и стабильность
+- [ ] Windows CI/CD pipeline стабилен и зелёный
+- [ ] macOS сборка (conda-forge PhysX)
+- [ ] Консистентное поведение PhysX на разных GPU (NVIDIA/AMD via Vulkan)
+- [ ] Обработка ошибок GPU: graceful fallback на CPU при отсутствии CUDA
+- [ ] Memory leak тесты для длительных сессий
+
+### v0.9.0 (Q3 2026) 📚 — Документация и примеры
+- [ ] Полное API reference (автогенерация из docstrings через Sphinx)
+- [ ] Tutorial: от установки до первого запроса
+- [ ] Пример: LiDAR анализ с реальными данными
+- [ ] Пример: Медицинский pipeline (DICOM → 3D)
+- [ ] Бенчмарк: производительность на стандартных датасетах
+- [ ] CHANGELOG.md с историей версий
 
 ### v1.0.0 (Q3 2026) 🎯
 - [ ] Production-ready

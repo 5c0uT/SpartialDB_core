@@ -580,8 +580,10 @@ class SpatialDataset:
     def _load_data(self):
         if self.format == "las":
             self._data = self._load_las()
-        else:
+        elif self.format in ("obj", "ply", "stl", "gltf", "glb"):
             self._data = self._load_mesh()
+        else:
+            raise ValueError(f"Unsupported format: '{self.format}'. Supported formats: las, obj, ply, stl, gltf, glb")
 
     def _load_las(self) -> pd.DataFrame:
         return pd.DataFrame(

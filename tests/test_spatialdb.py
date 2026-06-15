@@ -259,7 +259,7 @@ class TestTerrainAnalysis:
     def test_profile_terrain_basic(self, spatial_db):
         """Проверка создания профиля местности"""
         start = (0.0, 0.0)
-        end = (100.0, 100.0)
+        end = (1.0, 1.0)
         
         profile = spatial_db.profile_terrain(start, end)
         assert isinstance(profile, pd.DataFrame)
@@ -270,7 +270,7 @@ class TestTerrainAnalysis:
     def test_profile_terrain_with_width(self, spatial_db):
         """Проверка профиля местности с шириной"""
         start = (0.0, 0.0)
-        end = (100.0, 100.0)
+        end = (1.0, 1.0)
         width = 10.0
         
         profile = spatial_db.profile_terrain(start, end, width)
@@ -319,7 +319,7 @@ class TestIntegrationScenarios:
     def test_workflow_terrain_analysis(self, spatial_db):
         """Проверка полного workflow анализа местности"""
         # Профиль местности
-        profile = spatial_db.profile_terrain((0, 0), (100, 100))
+        profile = spatial_db.profile_terrain((0, 0), (1, 1))
         assert len(profile) > 0
         
         # Теплокарта
