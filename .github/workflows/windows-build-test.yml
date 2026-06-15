@@ -47,28 +47,58 @@ jobs:
           }
           & .\dependencies\vcpkg\vcpkg.exe install physx:x64-windows
 
-      - name: Build
+      - name: Detect conda
+        id: detect-conda
         shell: pwsh
         run: |
-          Write-Host "CONDA=$env:CONDA"
-          Write-Host "CONDA_PREFIX=$env:CONDA_PREFIX"
-          Write-Host "Conda command:"
-          Get-Command conda -ErrorAction SilentlyContinue | Format-List
-          Write-Host "Conda paths check:"
-          if (Test-Path "$env:USERPROFILE\miniconda3") { Write-Host "  USERPROFILE\miniconda3: EXISTS" }
-          if (Test-Path "$env:USERPROFILE\anaconda3") { Write-Host "  USERPROFILE\anaconda3: EXISTS" }
-          if (Test-Path "C:\Miniconda") { Write-Host "  C:\Miniconda: EXISTS" }
-          if (Test-Path "C:\Miniconda3") { Write-Host "  C:\Miniconda3: EXISTS" }
-          & .\run.ps1 -SkipPip -SkipVcpkg
+          $condaRoot = ""
+          if (Get-Command conda -ErrorAction SilentlyContinue) {
+            $condaExe = (Get-Command conda).Source
+            $condaRoot = Split-Path (Split-Path $condaExe)
+            Write-Host "Found conda via PATH: $condaRoot"
+          } elseif ($env:CONDA_PREFIX) {
+            $condaRoot = Split-Path $env:CONDA_PREFIX
+            Write-Host "Found conda via CONDA_PREFIX: $condaRoot"
+          } else {
+            Write-Host "ERROR: conda not found!"
+            Write-Host "CONDA=$env:CONDA"
+            Write-Host "CONDA_PREFIX=$env:CONDA_PREFIX"
+            Write-Host "PATH=$env:PATH"
+            exit 1
+          }
+          echo "CONDA_ROOT=$condaRoot" >> $env:GITHUB_OUTPUT
+
+      - name: Configure and build
+        shell: pwsh
+        run: |
+          $condaRoot = "${{ steps.detect-conda.outputs.CONDA_ROOT }}"
+          $envPython = "$condaRoot\envs\spatial_env\python.exe"
+          $toolchain = ".\dependencies\vcpkg\scripts\buildsystems\vcpkg.cmake"
+
+          Write-Host "CondaRoot: $condaRoot"
+          Write-Host "Python: $envPython"
+          Write-Host "Toolchain exists: $(Test-Path $toolchain)"
+
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$toolchain" `
+            -DPython_EXECUTABLE="$envPython" `
+            -DPython_ROOT_DIR="$condaRoot\envs\spatial_env" `
+            -DPYTHON_ROOT="$condaRoot\envs\spatial_env" `
+            -DCONDA_ENV_PATH="$condaRoot\envs\spatial_env"
+
+          if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
+
+          cmake --build build --config Release --parallel 16
+          if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
 
       - name: Smoke test
         shell: pwsh
         run: |
-          $condaRoot = $env:CONDA
-          if (-not $condaRoot) { $condaRoot = "$env:USERPROFILE\miniconda3" }
+          $condaRoot = "${{ steps.detect-conda.outputs.CONDA_ROOT }}"
           $envPython = "$condaRoot\envs\spatial_env\python.exe"
-          $physxBin = "$PSScriptRoot\dependencies\vcpkg\installed\x64-windows\bin"
+          $physxBin = ".\dependencies\vcpkg\installed\x64-windows\bin"
           $env:PATH = "$physxBin;$condaRoot\envs\spatial_env;$condaRoot\envs\spatial_env\Library\bin;$condaRoot\envs\spatial_env\Scripts;$env:PATH"
+
           & $envPython -c "import pathlib,sys; sys.path.insert(0,str(pathlib.Path.cwd()/'python')); import spatial_db; print('HAS_NATIVE_MODULE =',spatial_db.HAS_NATIVE_MODULE); print('init_physx =',spatial_db.native.init_physx(0))"
 
       - name: Run tests
