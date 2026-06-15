@@ -88,18 +88,27 @@ jobs:
 
           Write-Host "CondaRoot: $condaRoot"
           Write-Host "Python: $envPython"
+          Write-Host "Python exists: $(Test-Path $envPython)"
+          Write-Host "Toolchain: $toolchain"
           Write-Host "Toolchain exists: $(Test-Path $toolchain)"
 
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
-            -DCMAKE_TOOLCHAIN_FILE="$toolchain" `
-            -DPython_EXECUTABLE="$envPython" `
-            -DPython_ROOT_DIR="$condaRoot\envs\spatial_env" `
-            -DPYTHON_ROOT="$condaRoot\envs\spatial_env" `
-            -DCONDA_ENV_PATH="$condaRoot\envs\spatial_env"
+          Write-Host ""
+          Write-Host "=== cmake configure ==="
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DPython_EXECUTABLE="$envPython" -DPython_ROOT_DIR="$condaRoot\envs\spatial_env" -DPYTHON_ROOT="$condaRoot\envs\spatial_env" -DCONDA_ENV_PATH="$condaRoot\envs\spatial_env" 2>&1
+          Write-Host "cmake exit code: $LASTEXITCODE"
 
-          if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host ""
+            Write-Host "=== cmake output ==="
+            if (Test-Path "build\CMakeFiles\CMakeOutput.log") { Get-Content "build\CMakeFiles\CMakeOutput.log" -Tail 20 }
+            if (Test-Path "build\CMakeFiles\CMakeError.log") { Get-Content "build\CMakeFiles\CMakeError.log" -Tail 20 }
+            throw "cmake configure failed with exit code $LASTEXITCODE"
+          }
 
-          cmake --build build --config Release --parallel 16
+          Write-Host ""
+          Write-Host "=== cmake build ==="
+          cmake --build build --config Release --parallel 16 2>&1
+          Write-Host "cmake build exit code: $LASTEXITCODE"
           if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
 
       - name: Smoke test
